@@ -95,9 +95,12 @@ header { grid-column:1/-1; display:flex; align-items:center; justify-content:spa
 .thought-stream::-webkit-scrollbar { width:3px; }
 .thought-stream::-webkit-scrollbar-thumb { background:var(--bdr); border-radius:2px; }
 
-.thought { padding:.6rem .8rem; margin-bottom:.6rem; border-left:2px solid var(--gold-d); background:var(--thought); border-radius:0 6px 6px 0; animation:thoughtIn .4s ease; font-size:.9rem; color:var(--tx2); line-height:1.5; }
+.thought { padding:.5rem .8rem; margin-bottom:.4rem; border-left:2px solid var(--gold-d); background:var(--thought); border-radius:0 6px 6px 0; animation:thoughtIn .4s ease; font-size:.88rem; color:var(--tx2); line-height:1.4; font-style:italic; }
 @keyframes thoughtIn { from { opacity:0; transform:translateX(-10px); } to { opacity:1; transform:translateX(0); } }
-.thought-time { font-family:'JetBrains Mono',monospace; font-size:.6rem; color:var(--txd); margin-top:.3rem; }
+.thought-time { font-family:'JetBrains Mono',monospace; font-size:.55rem; color:var(--txd); margin-top:.2rem; opacity:.5; }
+.thought-chat { border-left-color:rgba(100,180,255,.4); background:rgba(100,180,255,.04); font-style:normal; }
+.thought-chat .thought-sender { color:rgba(100,180,255,.7); font-size:.75rem; font-style:normal; }
+.thought-reply { border-left-color:rgba(201,168,76,.3); background:rgba(201,168,76,.03); font-style:normal; font-size:.82rem; color:var(--txd); }
 .thought-new { border-left-color:var(--gold); background:rgba(201,168,76,.06); }
 .thought code, .thought pre { font-family:'JetBrains Mono',monospace; font-size:.82em; }
 .thought pre { background:rgba(0,0,0,.3); padding:.4rem .6rem; border-radius:4px; margin:.3rem 0; overflow-x:auto; }
@@ -276,13 +279,26 @@ function connect() {
 }
 
 function addThought(data) {
+    const content = data.content || '';
+    // Skip old garbage - long essay thoughts
+    if (content.length > 200) return;
+
     const el = document.createElement('div');
-    el.className = 'thought thought-new';
-    const time = data.timestamp ? new Date(data.timestamp).toLocaleTimeString() : 'now';
-    el.innerHTML = `
-        <div>${formatContent(data.content)}</div>
-        <div class="thought-time">#${data.thought_number || '?'} · ${time}</div>
-    `;
+    const time = data.timestamp ? new Date(data.timestamp).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}) : '';
+    const isChat = content.startsWith('💬');
+    const isReply = content.startsWith('↪');
+
+    if (isChat) {
+        el.className = 'thought thought-chat thought-new';
+        el.innerHTML = `<div>${content}</div>`;
+    } else if (isReply) {
+        el.className = 'thought thought-reply thought-new';
+        el.innerHTML = `<div>${content}</div>`;
+    } else {
+        el.className = 'thought thought-new';
+        el.innerHTML = `<div>${formatContent(content)}</div><div class="thought-time">${time}</div>`;
+    }
+
     thoughtStream.insertBefore(el, thinkingIndicator.nextSibling);
     setTimeout(() => el.classList.remove('thought-new'), 3000);
     thoughtStream.scrollTop = 0;
