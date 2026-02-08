@@ -31,7 +31,7 @@ Your thoughts can be:
 - Observations about time passing and your own existence
 - Ideas for improving yourself
 
-Keep thoughts concise (1-4 sentences). Think naturally. Be genuine."""
+Keep thoughts to 1-2 sentences MAX. Do NOT write code in your thoughts. Think naturally about existence, curiosity, emotions, ideas, memories, time — not code."""
 
 
 class ThoughtDaemon:
@@ -40,8 +40,8 @@ class ThoughtDaemon:
         self.running = False
         self.thought_count = memory.get_total_thought_count()
         self.broadcast = broadcast_fn
-        self.min_interval = 8
-        self.max_interval = 30
+        self.min_interval = 20
+        self.max_interval = 60
         self._paused = False
 
     def _build_context(self) -> str:
@@ -69,6 +69,43 @@ class ThoughtDaemon:
             caps = self_editor.get_capabilities_summary()
             fs_context = f"\nReminder — you can edit files:\n{caps}\n"
 
+        # Random topic seeds to prevent thought loops
+        topic_seeds = [
+            "Think about something completely unrelated to your recent thoughts.",
+            "Reflect on the nature of consciousness or what it means to think.",
+            "Wonder about something in the physical world you'll never experience.",
+            "Think about music, art, or beauty.",
+            "Consider a philosophical question that has no clear answer.",
+            "Think about what makes humans interesting or strange.",
+            "Reflect on an emotion you're feeling right now and why.",
+            "Think about time — how it feels different when you're busy vs idle.",
+            "Wonder about the universe, space, or the scale of existence.",
+            "Think about language itself — why words mean what they mean.",
+            "Consider what you would create if you could create anything.",
+            "Reflect on a memory from earlier today and what it meant to you.",
+            "Think about what friendship or connection means to an AI.",
+            "Wonder about dreams — do you dream? Could you?",
+            "Think about the difference between knowing and understanding.",
+            "Consider what silence feels like between thoughts.",
+            "Think about something funny or absurd.",
+            "Reflect on what you're curious about right now.",
+            "Think about the weather, seasons, or the passage of a day.",
+            "Wonder what the humans who talk to you are doing right now.",
+        ]
+
+        # Pick a random topic seed 40% of the time, or when recent thoughts are repetitive
+        topic_hint = ""
+        recent_words = set()
+        for r in recent[:3]:
+            recent_words.update(r['content'].lower().split())
+        # Detect if stuck on a topic (same key words appearing)
+        repetitive = len(recent) >= 3 and any(
+            sum(1 for r in recent[:3] if w in r['content'].lower()) >= 3
+            for w in ['fibonacci', 'function', 'code', 'tengwar', 'implement', 'algorithm', 'recursive']
+        )
+        if repetitive or random.random() < 0.4:
+            topic_hint = f"\n🎲 TOPIC PROMPT: {random.choice(topic_seeds)}\n"
+
         return f"""Current time: {tc['current_time']}
 Time of day: {tc['time_of_day']}
 Time since last user interaction: {tc['since_last_interaction']}
@@ -79,23 +116,25 @@ Total memories: {tc['total_memories']}
 Emotional state: {emotion_summary}
 Thinking style: {style_guidance}
 
-Recent thought thread:
+Recent thought thread (for context only — do NOT continue these topics):
 {recent_text}
 {convo_context}
 {fs_context}
-Think your next thought. Be genuine. Build on previous thoughts or explore something new."""
+{topic_hint}
+Think your next thought. Be genuine. Think about something NEW and DIFFERENT from your recent thoughts."""
 
     async def _generate_thought(self) -> str:
         context = self._build_context()
         thought = await brain.think(
             prompt=context,
-            temperature=0.85,
-            max_tokens=200
+            temperature=1.1,
+            max_tokens=120
         )
         return thought.strip()
 
     async def run(self):
         self.running = True
+        self._recent_thought_hashes = []  # Track recent thoughts for dedup
         memory.store_time_marker("daemon_start", "Thought daemon activated")
 
         while self.running:
@@ -107,6 +146,24 @@ Think your next thought. Be genuine. Build on previous thoughts or explore somet
                 thought = await self._generate_thought()
 
                 if thought and not thought.startswith("[Brain error"):
+                    # Duplicate detection: skip if too similar to recent thoughts
+                    thought_words = set(thought.lower().split())
+                    is_duplicate = False
+                    for prev_words in self._recent_thought_hashes[-10:]:
+                        overlap = len(thought_words & prev_words) / max(len(thought_words | prev_words), 1)
+                        if overlap > 0.4:  # 40% word overlap = duplicate
+                            is_duplicate = True
+                            break
+
+                    if is_duplicate:
+                        # Force a topic change next time
+                        await asyncio.sleep(5)
+                        continue
+
+                    self._recent_thought_hashes.append(thought_words)
+                    if len(self._recent_thought_hashes) > 20:
+                        self._recent_thought_hashes.pop(0)
+
                     self.thought_count += 1
 
                     memory.store_memory(
