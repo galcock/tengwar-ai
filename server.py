@@ -107,6 +107,21 @@ async def index():
     return (WEB_DIR / "index.html").read_text()
 
 
+@app.get("/ai", response_class=HTMLResponse)
+@app.get("/ai.html", response_class=HTMLResponse)
+async def ai_page():
+    ai_file = WEB_DIR / "ai.html"
+    if ai_file.exists():
+        return ai_file.read_text()
+    return HTMLResponse("Not found", status_code=404)
+
+
+# Serve any static files in web/static/
+STATIC_DIR = WEB_DIR / "static"
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+
 # === REST API ===
 
 @app.get("/api/status")
