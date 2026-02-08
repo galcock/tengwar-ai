@@ -199,14 +199,12 @@ class DialogueHandler:
         search_text = ""
         search_results = web_search.search_and_format(user_message)
         if search_results:
-            search_text = f"\n{search_results}\nUse this info naturally. Don't say 'according to search results.' Just know it."
+            search_text = f"\nFACTS YOU JUST LOOKED UP (use these in your answer):\n{search_results}\n"
 
+        # Keep prompt tight - only include what's needed
         return f"""Time: {tc['current_time']}
-Mood: {emotion_summary}
-{thoughts_text}
-{memory_text}
-{search_text}
 {history_text}
+{search_text}
 User: {user_message}
 
 Gary:"""

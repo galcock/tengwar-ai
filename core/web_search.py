@@ -39,7 +39,13 @@ def extract_query(message: str) -> str:
                    'search for ', 'look up ', 'google ', 'find out about ']:
         if q.lower().startswith(prefix):
             q = q[len(prefix):]
-    return q.strip('?!. ')
+    q = q.strip('?!. ')
+    # Add current date context for time-sensitive queries
+    today = datetime.now().strftime("%B %Y")
+    time_words = ['today', 'tonight', 'current', 'latest', 'now', 'this week', 'score']
+    if any(w in q.lower() for w in time_words):
+        q = f"{q} {today}"
+    return q
 
 
 def search(query: str, max_results: int = 3) -> list[dict]:
@@ -74,14 +80,14 @@ def search(query: str, max_results: int = 3) -> list[dict]:
 
 
 def format_results(results: list[dict]) -> str:
-    """Format search results for injection into the prompt."""
+    """Format search results as direct facts for the model."""
     if not results:
         return ""
-    lines = ["Web search results:"]
-    for i, r in enumerate(results, 1):
+    lines = []
+    for r in results:
         title = r.get('title', '')
-        body = r.get('body', '')[:200]
-        lines.append(f"  {i}. {title}: {body}")
+        body = r.get('body', '')[:300]
+        lines.append(f"- {title}: {body}")
     return "\n".join(lines)
 
 
