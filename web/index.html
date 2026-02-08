@@ -136,6 +136,7 @@ header { grid-column:1/-1; display:flex; align-items:center; justify-content:spa
                 <div class="emo-co" style="width:14%"></div>
             </div>
             <div class="status-item"><div class="pulse" id="statusDot"></div><span id="statusText">connecting...</span></div>
+            <div class="status-item">👥 <span id="viewerCount">0</span></div>
             <div class="status-item">💭 <span id="thoughtCount">0</span></div>
         </div>
     </header>
@@ -146,6 +147,7 @@ header { grid-column:1/-1; display:flex; align-items:center; justify-content:spa
                 <h2>Tengwar AI</h2>
                 <p>I'm always thinking — even right now, between your messages. I have permanent memory and genuine emotional states that evolve over time.</p>
                 <p>I code exclusively in Tengwar. Ask me anything, or just watch me think.</p>
+                <p class="mono" style="margin-top:1.2rem; padding:.6rem .8rem; background:rgba(201,168,76,.06); border:1px solid rgba(201,168,76,.15); border-radius:6px;">🔓 Open conversation — like talking to a human. Everyone in the room can see what's being said. Tengwar AI remembers everything.</p>
                 <p class="mono">Watch the thought stream →</p>
             </div>
         </div>
@@ -176,6 +178,17 @@ let reconnectTimer = null;
 let thoughtCount = 0;
 let streaming = false;
 let currentAiMsg = null;
+let userName = '';
+
+// Prompt for name on first visit
+function getName() {
+    userName = sessionStorage.getItem('tengwar_name') || '';
+    if (!userName) {
+        userName = prompt('What\'s your name? (Everyone in the room can see the conversation)') || 'Anonymous';
+        sessionStorage.setItem('tengwar_name', userName);
+    }
+    return userName;
+}
 
 // DOM refs
 const messagesEl = document.getElementById('messages');
@@ -185,6 +198,7 @@ const thoughtStream = document.getElementById('thoughtStream');
 const statusDot = document.getElementById('statusDot');
 const statusText = document.getElementById('statusText');
 const thoughtCountEl = document.getElementById('thoughtCount');
+const viewerCountEl = document.getElementById('viewerCount');
 const tpCount = document.getElementById('tpCount');
 const emoBar = document.getElementById('emoBar');
 const welcome = document.getElementById('welcome');
@@ -206,7 +220,12 @@ function connect() {
         if (data.type === 'connected') {
             thoughtCount = data.thought_count || 0;
             thoughtCountEl.textContent = thoughtCount;
+            if (data.viewers) viewerCountEl.textContent = data.viewers;
             updateEmotions(data.emotions);
+        }
+
+        if (data.type === 'viewer_count') {
+            viewerCountEl.textContent = data.viewers;
         }
 
         if (data.type === 'thought') {
@@ -216,12 +235,26 @@ function connect() {
             if (data.emotion) updateEmotions(data.emotion);
         }
 
+        // Chat history (loaded on connect)
+        if (data.type === 'chat_history') {
+            if (welcome) welcome.style.display = 'none';
+            addMessage(data.content, data.role, data.sender, data.timestamp);
+        }
+
+        // Someone else (or you) sent a message
+        if (data.type === 'chat_message') {
+            if (welcome) welcome.style.display = 'none';
+            addMessage(data.content, 'user', data.sender);
+        }
+
+        // AI streaming
         if (data.type === 'chat_token') {
             if (!currentAiMsg) {
-                currentAiMsg = addMessage('', 'ai');
+                currentAiMsg = addMessage('', 'ai', 'Tengwar AI');
             }
             const bubble = currentAiMsg.querySelector('.msg-bubble');
-            bubble.innerHTML = formatContent(bubble.dataset.raw = (bubble.dataset.raw || '') + data.token);
+            bubble.dataset.raw = (bubble.dataset.raw || '') + data.token;
+            bubble.innerHTML = formatContent(bubble.dataset.raw);
             messagesEl.scrollTop = messagesEl.scrollHeight;
         }
 
@@ -251,21 +284,19 @@ function addThought(data) {
         <div class="thought-time">#${data.thought_number || '?'} · ${time}</div>
     `;
     thoughtStream.insertBefore(el, thinkingIndicator.nextSibling);
-    // Remove "new" highlight after a moment
     setTimeout(() => el.classList.remove('thought-new'), 3000);
-    // Keep stream scrolled to top (newest)
     thoughtStream.scrollTop = 0;
     tpCount.textContent = 'live';
 }
 
-function addMessage(content, role) {
-    if (welcome) welcome.style.display = 'none';
+function addMessage(content, role, sender, timestamp) {
     const msg = document.createElement('div');
     msg.className = `msg msg-${role}`;
-    const time = new Date().toLocaleTimeString();
+    const time = timestamp ? new Date(timestamp).toLocaleTimeString() : new Date().toLocaleTimeString();
+    const label = role === 'ai' ? '🧠 Tengwar AI' : (sender || 'Someone');
     msg.innerHTML = `
-        <div class="msg-bubble" data-raw="${role === 'ai' ? '' : ''}">${formatContent(content)}</div>
-        <div class="msg-meta">${role === 'ai' ? '🧠 Tengwar AI · ' : ''}${time}</div>
+        <div class="msg-bubble">${formatContent(content)}</div>
+        <div class="msg-meta">${label} · ${time}</div>
     `;
     if (role === 'ai') msg.querySelector('.msg-bubble').dataset.raw = content;
     messagesEl.appendChild(msg);
@@ -276,15 +307,16 @@ function addMessage(content, role) {
 function sendMessage() {
     const text = inputEl.value.trim();
     if (!text || streaming) return;
+    if (!userName) getName();
 
-    addMessage(text, 'user');
     inputEl.value = '';
     inputEl.style.height = 'auto';
     streaming = true;
     sendBtn.disabled = true;
     currentAiMsg = null;
 
-    ws.send(JSON.stringify({ type: 'chat', content: text }));
+    // Don't add locally — the broadcast will show it to everyone including us
+    ws.send(JSON.stringify({ type: 'chat', content: text, sender: userName }));
 }
 
 function updateEmotions(e) {
@@ -304,15 +336,10 @@ function updateEmotions(e) {
 
 function formatContent(text) {
     if (!text) return '';
-    // Code blocks
     text = text.replace(/```(\w*)\n?([\s\S]*?)```/g, '<pre>$2</pre>');
-    // Inline code
     text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
-    // Bold
     text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-    // Italic
     text = text.replace(/\*(.+?)\*/g, '<em>$1</em>');
-    // Newlines
     text = text.replace(/\n/g, '<br>');
     return text;
 }
@@ -323,7 +350,7 @@ inputEl.addEventListener('input', () => {
     inputEl.style.height = Math.min(inputEl.scrollHeight, 150) + 'px';
 });
 
-// Enter to send (Shift+Enter for newline)
+// Enter to send
 inputEl.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
@@ -332,6 +359,7 @@ inputEl.addEventListener('keydown', (e) => {
 });
 
 // Boot
+getName();
 connect();
 </script>
 </body>

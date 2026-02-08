@@ -185,7 +185,14 @@ async def websocket_endpoint(ws: WebSocket):
         "emotions": emotion_engine.state.to_dict(),
         "time": tc,
         "thought_count": memory.get_total_thought_count(),
+        "viewers": len(connected_clients),
     }))
+
+    # Notify others someone joined
+    await broadcast({
+        "type": "viewer_count",
+        "viewers": len(connected_clients),
+    })
 
     # Send recent thoughts for context
     recent = memory.get_recent_thoughts(limit=10)
@@ -200,27 +207,50 @@ async def websocket_endpoint(ws: WebSocket):
             "emotion": json.loads(t['emotion']) if t.get('emotion') else {},
         }))
 
+    # Send recent chat messages so new visitors see the conversation
+    recent_msgs = memory.get_recent_memories(limit=20)
+    chat_msgs = [m for m in recent_msgs if m['type'] in ('user_message', 'response')]
+    for m in reversed(chat_msgs[-10:]):
+        await ws.send_text(json.dumps({
+            "type": "chat_history",
+            "role": "user" if m['type'] == 'user_message' else "ai",
+            "content": m['content'],
+            "timestamp": m['timestamp'],
+            "sender": (json.loads(m['metadata']).get('sender', 'Someone') if m.get('metadata') else 'Someone') if m['type'] == 'user_message' else 'Tengwar AI',
+        }))
+
     try:
         while True:
             data = await ws.receive_text()
             msg = json.loads(data)
 
             if msg.get("type") == "chat":
-                # Stream response back
+                sender = msg.get("sender", "Someone")
+
+                # Broadcast user message to ALL clients
+                await broadcast({
+                    "type": "chat_message",
+                    "role": "user",
+                    "content": msg["content"],
+                    "sender": sender,
+                })
+
+                # Stream response to ALL clients (dialogue handler stores messages)
                 full_response = ""
                 async for token in dialogue_handler.handle_message_stream(msg["content"]):
                     full_response += token
-                    await ws.send_text(json.dumps({
+                    await broadcast({
                         "type": "chat_token",
                         "token": token,
-                    }))
-                await ws.send_text(json.dumps({
+                    })
+                await broadcast({
                     "type": "chat_done",
                     "emotions": emotion_engine.state.to_dict(),
-                }))
+                })
 
     except WebSocketDisconnect:
         connected_clients.discard(ws)
+        await broadcast({"type": "viewer_count", "viewers": len(connected_clients)})
     except Exception as e:
         connected_clients.discard(ws)
         print(f"[WebSocket error] {e}")
