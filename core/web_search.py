@@ -1,30 +1,22 @@
 """
 Tengwar AI — Web Search
 Gives Gary access to current events and real-time information.
-Uses DuckDuckGo for zero-config search.
+Uses DuckDuckGo HTML search via httpx (no extra package needed).
 """
 import re
-import asyncio
+import httpx
 from datetime import datetime
-
-try:
-    from duckduckgo_search import DDGS
-    HAS_SEARCH = True
-except ImportError:
-    HAS_SEARCH = False
-    print("[web_search] duckduckgo-search not installed. Run: pip3 install duckduckgo-search --break-system-packages")
-
 
 # Keywords/patterns that suggest a search would help
 SEARCH_TRIGGERS = [
-    r'\b(who is|who are|who won|who\'s)\b',
-    r'\b(what happened|what\'s happening|what is happening)\b',
-    r'\b(current|latest|recent|today|tonight|yesterday|this week|this month)\b',
-    r'\b(score|scores|playing|game|match|super bowl|world cup|championship)\b',
+    r'\b(who is|who are|who won|who\'s playing|whos playing)\b',
+    r'\b(what happened|what\'s happening)\b',
+    r'\b(current|latest|recent|today|tonight|yesterday|this week)\b',
+    r'\b(score|scores|playing|game|match|super bowl|world cup|championship|nfl|nba)\b',
     r'\b(news|headline|breaking)\b',
     r'\b(price|stock|market|bitcoin|crypto)\b',
     r'\b(weather|forecast)\b',
-    r'\b(released|launched|announced|died|elected|fired|hired)\b',
+    r'\b(released|launched|announced|died|elected)\b',
     r'\b(do you know about|have you heard|did you see|did you hear)\b',
     r'\b(search|look up|google|find out)\b',
 ]
@@ -32,8 +24,6 @@ SEARCH_TRIGGERS = [
 
 def should_search(message: str) -> bool:
     """Detect if a message would benefit from a web search."""
-    if not HAS_SEARCH:
-        return False
     msg_lower = message.lower()
     for pattern in SEARCH_TRIGGERS:
         if re.search(pattern, msg_lower):
@@ -43,9 +33,7 @@ def should_search(message: str) -> bool:
 
 def extract_query(message: str) -> str:
     """Extract the best search query from the user's message."""
-    # Clean up for search - remove conversational fluff
     q = message.strip()
-    # Remove common prefixes
     for prefix in ['do you know ', 'can you tell me ', 'what do you think about ',
                    'have you heard about ', 'did you see ', 'did you hear about ',
                    'search for ', 'look up ', 'google ', 'find out about ']:
@@ -55,13 +43,31 @@ def extract_query(message: str) -> str:
 
 
 def search(query: str, max_results: int = 3) -> list[dict]:
-    """Search the web and return results."""
-    if not HAS_SEARCH:
-        return []
+    """Search via DuckDuckGo HTML (no API key, no extra package)."""
     try:
-        with DDGS() as ddgs:
-            results = list(ddgs.text(query, max_results=max_results))
-            return results
+        url = "https://html.duckduckgo.com/html/"
+        resp = httpx.post(url, data={"q": query}, headers={
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"
+        }, timeout=5.0)
+        if resp.status_code != 200:
+            print(f"[web_search] HTTP {resp.status_code}")
+            return []
+
+        # Parse results from HTML
+        results = []
+        text = resp.text
+        # Find result snippets
+        import re as _re
+        blocks = _re.findall(r'<a rel="nofollow" class="result__a".*?>(.*?)</a>.*?<a class="result__snippet".*?>(.*?)</a>', text, _re.DOTALL)
+        for title_html, snippet_html in blocks[:max_results]:
+            title = _re.sub(r'<.*?>', '', title_html).strip()
+            snippet = _re.sub(r'<.*?>', '', snippet_html).strip()
+            if title and snippet:
+                results.append({"title": title, "body": snippet})
+
+        print(f"[web_search] Query: '{query}' -> {len(results)} results")
+        return results
+
     except Exception as e:
         print(f"[web_search] Error: {e}")
         return []
@@ -82,9 +88,16 @@ def format_results(results: list[dict]) -> str:
 def search_and_format(message: str) -> str:
     """Full pipeline: detect, search, format."""
     if not should_search(message):
+        print(f"[web_search] No trigger for: '{message[:50]}'")
         return ""
     query = extract_query(message)
     if len(query) < 3:
         return ""
+    print(f"[web_search] Searching: '{query}'")
     results = search(query)
-    return format_results(results)
+    formatted = format_results(results)
+    if formatted:
+        print(f"[web_search] Injecting {len(results)} results into prompt")
+    else:
+        print(f"[web_search] No results found")
+    return formatted
