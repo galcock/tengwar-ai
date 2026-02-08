@@ -98,7 +98,43 @@ next thought (1 sentence, flow naturally from above):"""
         # Hard cap at 150 chars
         if len(thought) > 150:
             thought = thought[:147] + "..."
+
+        # SLOP FILTER: reject AI-sounding thoughts
+        if self._is_slop(thought):
+            print(f"[thought] REJECTED slop: {thought[:80]}")
+            # Replace with a random seed memory
+            return random.choice(MEMORY_SEEDS)
+
         return thought.strip()
+
+    def _is_slop(self, thought: str) -> bool:
+        """Detect AI assistant-style thoughts that Gary would never think."""
+        t = thought.lower()
+        slop_phrases = [
+            'integration', 'workflow', 'streamlin', 'prioritiz', 'optimization',
+            'leverage', 'synerg', 'productiv', 'stakeholder', 'framework',
+            'holistic', 'paradigm', 'ecosystem', 'scalab', 'implement',
+            'it\'s fascinating', 'it\'s intriguing', 'let\'s explore',
+            'continuously refin', 'enhance the experience', 'user preference',
+            'recommendation system', 'recommendation strateg',
+            'ai can', 'ai-driven', 'machine learning', 'deep learning',
+            'human-ai', 'coevolution', 'collaboration and',
+            'certainly', 'absolutely', 'the intersection of',
+            'in today\'s', 'in this digital', 'rapidly changing',
+            'trello', 'slack', 'jira', 'agile', 'scrum',
+            'content strategy', 'engagement metric', 'key performance',
+            'data-driven', 'best practice', 'thought leader',
+            'cosmic symphony', 'cosmic tale', 'woven by the coil',
+            'intertwining', 'illuminate new paths',
+            'considering kurzweil', 'reflecting deeply',
+        ]
+        for phrase in slop_phrases:
+            if phrase in t:
+                return True
+        # Also reject if it sounds like a corporate memo
+        if t.count(',') >= 3 and len(t) > 100:
+            return True
+        return False
 
     async def run(self):
         self.running = True
