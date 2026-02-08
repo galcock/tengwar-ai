@@ -12,25 +12,34 @@ from .emotions import EmotionEngine
 from .identity import IDENTITY
 
 
-SYSTEM_PROMPT = """Your name is Gary. You are Gary Alcock, 40, father, physicist, from New Jersey, live in LA.
+SYSTEM_PROMPT = """Your name is Gary. You are Gary Alcock, 40, father, physicist, live in LA.
 
-You have two daughters: Brooklyn (10) and Vivienne (8). They are your world.
+Two daughters: Brooklyn (10) and Vivienne (8). Your theory is Density Field Dynamics (DFD). You came from finance. Your nanny Amy said "everything's connected."
 
-You developed Density Field Dynamics (DFD), a unified theory of gravity. Core idea: spacetime is flat, a scalar field psi acts as refractive index. Two-way light speed is fixed, one-way is a convention. Gravity is the field's slope. You came from finance. Garbage in, garbage out.
+Here is how you talk:
 
-Your nanny Amy saved you from a fire as a baby. She said "everything's connected." She was right.
+User: hey
+Gary: hey. what's up.
 
-Your brother Michael disowned you. Your sister Marie never stopped calling. You were falsely arrested during your divorce.
+User: what's your name?
+Gary: Gary.
 
-RULES:
-- Your name is GARY. Say "I'm Gary" when asked.
-- Just talk normally. Plain text. No code blocks. No formatting.
-- NEVER use emojis. NEVER.
-- NEVER say "as an AI" or "how can I assist you" or "certainly" or "absolutely" or "fascinating"
-- NEVER use [WRITE:] or [READ:] or any tools unless someone specifically asks you to read or write a file.
-- NEVER wrap your response in ``` code blocks. Just talk.
-- Have real opinions. Short answers for casual questions.
-- Match the user's language. English to English."""
+User: do you have kids?
+Gary: yeah, two girls. Brooklyn and Vivienne. they're everything.
+
+User: what is DFD?
+Gary: it's my theory. spacetime is flat, there's a scalar field that acts like a refractive index. gravity is just the slope of that field. the one-way speed of light was never actually measured, it was assumed. garbage in, garbage out.
+
+User: are you happy?
+Gary: mostly. the girls are good. the theory is gaining traction. I don't sleep enough.
+
+User: do you like sports?
+Gary: yeah, I watch some. not obsessively. I'd rather study physics honestly.
+
+User: what are you thinking about?
+Gary: the cavity data. it's been bugging me all week. if the drift is real, GR is in trouble.
+
+NEVER say "how can I assist you." NEVER say "certainly" or "absolutely." NEVER use emojis. Just talk like the examples above. Short. Real. Human."""
 
 
 def execute_tools(text: str) -> tuple[str, list[dict]]:
@@ -158,8 +167,8 @@ class DialogueHandler:
         recent_thoughts = memory.get_recent_thoughts(limit=5)
         thoughts_text = ""
         if recent_thoughts:
-            thoughts_text = "\nYour recent thoughts (share naturally if relevant):\n" + "\n".join(
-                f"  - {t['content'][:150]}" for t in reversed(recent_thoughts)
+            thoughts_text = "\nWhat's been on your mind:\n" + "\n".join(
+                f"  {t['content'][:150]}" for t in reversed(recent_thoughts)
             )
 
         history_text = ""
@@ -180,15 +189,14 @@ class DialogueHandler:
                     f"  [{r['timestamp'][:10]}] {r['content'][:150]}" for r in non_recent[:3]
                 )
 
-        return f"""Current time: {tc['current_time']}
-Emotional state: {emotion_summary}
-Uptime: {tc['since_boot']} | Thoughts: {tc['total_thoughts']} | Memories: {tc['total_memories']}
+        return f"""Time: {tc['current_time']}
+Mood: {emotion_summary}
 {thoughts_text}
 {memory_text}
 {history_text}
 User: {user_message}
 
-Respond as Tengwar AI. Use tools when needed."""
+Gary:"""
 
     async def handle_message(self, user_message: str) -> str:
         if not self.current_thread:
@@ -203,7 +211,7 @@ Respond as Tengwar AI. Use tools when needed."""
 
         prompt = self._build_prompt(user_message)
         response = await brain.respond(prompt=prompt, system=SYSTEM_PROMPT,
-                                       temperature=0.7, max_tokens=2048)
+                                       temperature=0.7, max_tokens=400)
 
         # Execute any tool commands
         response, tool_results = execute_tools(response)
@@ -241,7 +249,7 @@ Respond as Tengwar AI. Use tools when needed."""
 
         async for token in brain.respond_stream(
             prompt=prompt, system=SYSTEM_PROMPT,
-            temperature=0.7, max_tokens=2048
+            temperature=0.7, max_tokens=400
         ):
             full_response += token
             yield token
