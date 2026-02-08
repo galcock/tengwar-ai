@@ -115,16 +115,12 @@ def git_push(repo: str = None) -> str:
 def run_tengwar(code: str) -> str:
     """Execute Tengwar code and return the result."""
     try:
-        result = subprocess.run(
-            ["python3", "-m", "tengwar", "-e", code],
-            capture_output=True, text=True, timeout=10
-        )
-        output = result.stdout.strip()
-        if result.returncode != 0:
-            output += "\n" + result.stderr.strip()
-        return output or "(no output)"
+        from tengwar import Interpreter
+        interp = Interpreter()
+        result = interp.run_source(code)
+        return str(result) if result is not None else "(no output)"
     except Exception as e:
-        return f"[Tengwar error: {e}]"
+        return f"Error: {e}"
 
 
 def get_capabilities_summary() -> str:
