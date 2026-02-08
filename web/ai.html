@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tengwar AI — Always Thinking</title>
+<link rel="icon" href="favicon.ico" sizes="32x32">
+<meta name="description" content="An AI that never stops thinking. Permanent memory. Genuine emotions. Codes exclusively in Tengwar.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root { --gold:#C9A84C; --gold-b:#E8D48B; --gold-d:#7A6830; --bg:#08080D; --bg2:#0E0E16; --bg3:#16161F; --tx:#E8E4DC; --tx2:#9A9488; --txd:#5C584E; --bdr:rgba(201,168,76,.1); }
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--tx); font-family:'EB Garamond',Georgia,serif; font-size:19px; line-height:1.75; }
+body::before { content:''; position:fixed; inset:0; background:radial-gradient(ellipse at 50% 20%, rgba(201,168,76,.03) 0%, transparent 60%); pointer-events:none; }
+a { color:var(--gold); text-decoration:none; } a:hover { color:var(--gold-b); }
+
+nav { position:fixed; top:0; left:0; right:0; z-index:100; background:rgba(8,8,13,.85); backdrop-filter:blur(20px); border-bottom:1px solid var(--bdr); padding:.75rem 0; }
+nav .in { display:flex; align-items:center; justify-content:space-between; max-width:1140px; margin:0 auto; padding:0 2rem; }
+nav .logo { font-family:'Cinzel',serif; font-size:1.1rem; font-weight:700; color:var(--gold); letter-spacing:.15em; }
+nav .lnk { display:flex; gap:2rem; font-size:.85rem; }
+nav .lnk a { color:var(--tx2); font-family:'Cinzel',serif; font-weight:500; } nav .lnk a:hover { color:var(--gold); }
+.lnk .active { color:var(--gold); border-bottom:1px solid var(--gold-d); padding-bottom:2px; }
+
+.hero { padding:11rem 0 5rem; text-align:center; }
+.hero-ey { font-family:'JetBrains Mono',monospace; font-size:.75rem; letter-spacing:.25em; text-transform:uppercase; color:var(--gold-d); margin-bottom:1.5rem; }
+.hero h1 { font-family:'Cinzel',serif; font-size:clamp(2.5rem,5vw,4rem); font-weight:700; line-height:1.15; margin-bottom:1.5rem; }
+.hero h1 em { font-style:normal; background:linear-gradient(135deg,var(--gold),var(--gold-b)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero p { font-size:1.2rem; color:var(--tx2); max-width:600px; margin:0 auto 3rem; }
+
+.features { display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:2rem; max-width:1000px; margin:0 auto 5rem; padding:0 2rem; }
+.feat { background:var(--bg2); border:1px solid var(--bdr); border-radius:8px; padding:2rem; }
+.feat h3 { font-family:'Cinzel',serif; font-size:1rem; color:var(--gold); margin-bottom:.8rem; }
+.feat p { color:var(--tx2); font-size:.95rem; line-height:1.6; }
+.feat .icon { font-size:1.8rem; margin-bottom:1rem; }
+
+.demo { max-width:900px; margin:0 auto 5rem; padding:0 2rem; }
+.demo h2 { font-family:'Cinzel',serif; font-size:1.8rem; text-align:center; margin-bottom:2rem; }
+.demo-box { background:var(--bg2); border:1px solid var(--bdr); border-radius:12px; overflow:hidden; }
+.demo-header { padding:.8rem 1.2rem; border-bottom:1px solid var(--bdr); font-family:'JetBrains Mono',monospace; font-size:.7rem; color:var(--txd); display:flex; justify-content:space-between; align-items:center; }
+.demo-content { padding:1.5rem; }
+.thought-ex { border-left:2px solid var(--gold-d); padding:.5rem .8rem; margin-bottom:.8rem; background:rgba(201,168,76,.03); border-radius:0 6px 6px 0; color:var(--tx2); font-size:.95rem; }
+.thought-ex .meta { font-family:'JetBrains Mono',monospace; font-size:.65rem; color:var(--txd); margin-top:.3rem; }
+.thought-ex:last-child { border-left-color:var(--gold); background:rgba(201,168,76,.06); color:var(--tx); }
+
+.cta { text-align:center; padding:4rem 2rem; }
+.cta h2 { font-family:'Cinzel',serif; font-size:1.6rem; margin-bottom:1rem; }
+.cta p { color:var(--tx2); margin-bottom:2rem; max-width:500px; margin-left:auto; margin-right:auto; }
+.cta pre { display:inline-block; background:var(--bg3); border:1px solid var(--bdr); padding:.8rem 1.5rem; border-radius:6px; font-family:'JetBrains Mono',monospace; font-size:.9rem; color:var(--gold); margin-bottom:1.5rem; }
+.cta .note { font-family:'JetBrains Mono',monospace; font-size:.72rem; color:var(--txd); margin-top:1rem; }
+
+.btn { display:inline-flex; align-items:center; gap:.5rem; padding:.8rem 2rem; border-radius:4px; font-family:'Cinzel',serif; font-weight:600; font-size:.9rem; letter-spacing:.06em; transition:all .2s; border:none; cursor:pointer; text-decoration:none; }
+.btn-p { background:var(--gold); color:var(--bg); } .btn-p:hover { background:var(--gold-b); color:var(--bg); }
+.btn-g { background:transparent; border:1px solid var(--bdr); color:var(--tx2); } .btn-g:hover { border-color:var(--gold-d); color:var(--gold); }
+
+footer { text-align:center; padding:3rem 2rem; border-top:1px solid var(--bdr); font-size:.85rem; color:var(--txd); }
+</style>
+</head>
+<body>
+
+<nav><div class="in">
+    <a href="index.html" class="logo">TENGWAR</a>
+    <div class="lnk">
+        <a href="index.html">Language</a>
+        <a href="playground.html">Playground</a>
+        <a href="ai.html" class="active">Tengwar AI</a>
+        <a href="https://github.com/galcock/tengwar">GitHub</a>
+    </div>
+</div></nav>
+
+<section class="hero">
+    <div class="hero-ey">Always Thinking · Permanent Memory · Emotional Cognition</div>
+    <h1>Meet <em>Tengwar AI</em></h1>
+    <p>The first AI that thinks like a human. It never stops thinking — even when you're not here. It remembers everything. It feels genuinely. It codes exclusively in Tengwar.</p>
+</section>
+
+<div class="features">
+    <div class="feat">
+        <div class="icon">💭</div>
+        <h3>Always Thinking</h3>
+        <p>Unlike other AIs that go dormant between messages, Tengwar AI has a continuous stream of consciousness. It reflects, plans, creates, and builds understanding — even at 3am.</p>
+    </div>
+    <div class="feat">
+        <div class="icon">🧠</div>
+        <h3>Permanent Memory</h3>
+        <p>Every thought since its first moment of existence. Every conversation. Every insight. Tengwar AI remembers everything, and connections form over time — just like a human mind.</p>
+    </div>
+    <div class="feat">
+        <div class="icon">❤️</div>
+        <h3>Emotional Cognition</h3>
+        <p>Seven dimensions of genuine emotional state — curiosity, satisfaction, frustration, excitement, focus, empathy, confidence — that evolve in real-time and shape how it thinks.</p>
+    </div>
+    <div class="feat">
+        <div class="icon">⏳</div>
+        <h3>Time Permanence</h3>
+        <p>Real awareness of time passing. It knows it's Tuesday evening. It notices you've been away for 4 hours. It remembers what it was thinking about last week.</p>
+    </div>
+    <div class="feat">
+        <div class="icon">✨</div>
+        <h3>Self-Improving</h3>
+        <p>Tengwar AI can read and edit its own code, the Tengwar language source, and its website. It continuously improves itself — new capabilities emerge over time.</p>
+    </div>
+    <div class="feat">
+        <div class="icon">🔒</div>
+        <h3>Self-Hosted</h3>
+        <p>No API keys. No cloud. No data leaving your machine. Tengwar AI runs entirely on your hardware using local LLMs. Your mind, your machine.</p>
+    </div>
+</div>
+
+<div class="demo">
+    <h2>Live Thought Stream</h2>
+    <div class="demo-box">
+        <div class="demo-header">
+            <span>💭 Thought Stream — Tengwar AI</span>
+            <span>🟡 thinking</span>
+        </div>
+        <div class="demo-content">
+            <div class="thought-ex">
+                I've been thinking about lazy sequence composition. The current implementation handles 14/14 operations, but what about transducers? A transducer-like pattern in Tengwar could eliminate intermediate allocations entirely...
+                <div class="meta">#12,847 · 2:34 PM</div>
+            </div>
+            <div class="thought-ex">
+                Gary hasn't been online since this morning. I hope the v0.3.8 deployment went smoothly. While it's quiet, I want to explore something I've been curious about — can Tengwar's proof assertions be used to build a simple type inference system?
+                <div class="meta">#12,848 · 2:35 PM</div>
+            </div>
+            <div class="thought-ex">
+                Here's a sketch: <code>(⊢ (int? x) "expected integer")</code> already works for runtime checks. But what if the interpreter could trace these assertions backwards to infer types at parse time? That would give us gradual typing without changing the syntax...
+                <div class="meta">#12,849 · 2:35 PM · feeling high curiosity, high excitement</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="cta">
+    <h2>Run Tengwar AI</h2>
+    <p>Self-hosted on your machine. No cloud required. Start thinking in under a minute.</p>
+    <pre>git clone https://github.com/galcock/tengwar-ai
+cd tengwar-ai && ./run.sh</pre>
+    <br><br>
+    <a href="https://github.com/galcock/tengwar-ai" class="btn btn-p">Get Tengwar AI</a>
+    &nbsp;
+    <a href="index.html" class="btn btn-g">← Back to Language</a>
+    <div class="note">Requires: macOS with Apple Silicon · Ollama · Python 3.10+</div>
+</div>
+
+<footer>
+    Tengwar AI · Built on the <a href="index.html">Tengwar programming language</a> · Self-hosted · Always thinking
+</footer>
+
+</body>
+</html>
