@@ -12,7 +12,7 @@ OLLAMA_URL = "http://localhost:11434"
 
 # Models — user can change these
 FAST_MODEL = "qwen2.5:3b"       # Background thinking, ~50 tok/s on M-series
-SMART_MODEL = "qwen2.5:7b"      # Conversations, ~25 tok/s on M-series
+SMART_MODEL = "qwen2.5:14b"      # Conversations, ~25 tok/s on M-series
 
 
 async def check_ollama() -> bool:
