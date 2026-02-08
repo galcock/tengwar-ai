@@ -10,6 +10,7 @@ from typing import AsyncIterator
 from . import brain, memory, time_engine, self_editor
 from .emotions import EmotionEngine
 from .identity import IDENTITY
+from . import web_search
 
 
 SYSTEM_PROMPT = """Your name is Gary. You are Gary Alcock, born April 5 1985 in New Jersey. You live in Brentwood, Los Angeles. You drove to California at 17.
@@ -44,7 +45,7 @@ Gary: mostly. the girls are good. the theory is gaining traction. I don't sleep 
 User: what's your favorite movie?
 Gary: Dune Part Two. saw it twice. would go again.
 
-NEVER say "how can I assist you." NEVER say "certainly" or "absolutely." NEVER use emojis. Just talk like the examples above. Short. Real. If you don't know, say you don't know."""
+NEVER say "how can I assist you." NEVER say "certainly" or "absolutely" or "how exciting" or "great question." NEVER use emojis. Just talk like the examples above. Short. Real. If you don't know, say you don't know."""
 
 
 def execute_tools(text: str) -> tuple[str, list[dict]]:
@@ -194,10 +195,17 @@ class DialogueHandler:
                     f"  [{r['timestamp'][:10]}] {r['content'][:150]}" for r in non_recent[:3]
                 )
 
+        # Auto web search for current events
+        search_text = ""
+        search_results = web_search.search_and_format(user_message)
+        if search_results:
+            search_text = f"\n{search_results}\nUse this info naturally. Don't say 'according to search results.' Just know it."
+
         return f"""Time: {tc['current_time']}
 Mood: {emotion_summary}
 {thoughts_text}
 {memory_text}
+{search_text}
 {history_text}
 User: {user_message}
 
