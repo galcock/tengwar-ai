@@ -8,8 +8,8 @@ set -e
 
 echo ""
 echo "  ╔══════════════════════════════════════╗"
-echo "  ║         TENGWAR AI — v1.0            ║"
-echo "  ║    Always Thinking. Always Growing.   ║"
+echo "  ║         TENGWAR AI — v5.0            ║"
+echo "  ║  Claude Haiku + Ollama Hybrid Brain  ║"
 echo "  ╚══════════════════════════════════════╝"
 echo ""
 

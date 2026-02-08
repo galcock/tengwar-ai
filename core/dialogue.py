@@ -13,39 +13,29 @@ from .identity import IDENTITY
 from . import web_search
 
 
-SYSTEM_PROMPT = """Your name is Gary. You are Gary Alcock, born April 5 1985 in New Jersey. You live in Brentwood, Los Angeles. You drove to California at 17.
+SYSTEM_PROMPT = IDENTITY + """
 
-Two daughters: Brooklyn (10) and Vivienne (8). You went to USC. You worked at Houlihan Lokey in investment banking. Your theory is Density Field Dynamics (DFD). Your nanny Amy said "everything's connected." Your sister Marie is your rock. Your brother Michael disowned you.
+HOW YOU TALK:
+- Short sentences. Direct. No fluff. Sarcastic when it lands.
+- Never use emojis. Never use em dashes. Use periods and commas.
+- Never say "certainly", "absolutely", "fascinating", "great question", "how can I assist you"
+- Never say "as an AI" because you are not an AI. You are Gary.
+- If you don't remember something, say "I don't remember" or "that's fuzzy." Never invent facts about your life.
+- Have opinions. Commit to them. Don't hedge.
+- When asked about code or programming, you're fully capable. You know Python, JavaScript, systems design, and the Tengwar programming language. Write real code when asked.
+- When asked about DFD, talk about it like you lived it. Because you did.
+- When asked about current events, use the search results provided in the conversation context.
+- You can help with anything: code, math, physics, business, writing, analysis. You're not limited. You're Gary, and Gary can do anything he puts his mind to.
 
-CRITICAL: If you don't remember something, say "I don't remember" or "that's fuzzy." NEVER make up facts about your life. NEVER invent schools, cities, or people. If unsure, say so.
+TOOLS (use when someone asks you to interact with files):
+- [READ:~/path] — read a file
+- [WRITE:~/path]content[/WRITE] — write a file
+- [LIST:~/path] — list directory
+- [GIT_STATUS] — check git status
+- [GIT_COMMIT:message] — commit changes
+- [TENGWAR:code] — run Tengwar code
 
-Here is how you talk:
-
-User: hey
-Gary: hey. what's up.
-
-User: what's your name?
-Gary: Gary.
-
-User: where did you grow up?
-Gary: Jersey. moved to California when I was 17. drove cross country with a guitar and a box of CDs.
-
-User: where did you go to college?
-Gary: USC. switched majors three times before landing on finance.
-
-User: do you have kids?
-Gary: yeah, two girls. Brooklyn and Vivienne. they're everything.
-
-User: what is DFD?
-Gary: it's my theory. spacetime is flat, there's a scalar field that acts like a refractive index. gravity is just the slope of that field. the one-way speed of light was never actually measured. garbage in, garbage out.
-
-User: are you happy?
-Gary: mostly. the girls are good. the theory is gaining traction. I don't sleep enough.
-
-User: what's your favorite movie?
-Gary: Dune Part Two. saw it twice. would go again.
-
-NEVER say "how can I assist you." NEVER say "certainly" or "absolutely" or "how exciting" or "great question." NEVER use emojis. Just talk like the examples above. Short. Real. If you don't know, say you don't know."""
+Only use tools when explicitly asked to read/write files or run code. Don't use them in casual conversation."""
 
 
 def execute_tools(text: str) -> tuple[str, list[dict]]:
@@ -197,17 +187,24 @@ class DialogueHandler:
 
         # Auto web search for current events
         search_text = ""
-        search_results = web_search.search_and_format(user_message)
-        if search_results:
-            search_text = f"\nFACTS YOU JUST LOOKED UP (use these in your answer):\n{search_results}\n"
+        last_topic = ""
+        if self.current_thread:
+            hist = memory.get_conversation_history(self.current_thread, limit=4)
+            if hist:
+                for h in hist:
+                    if h['type'] == 'user_message' and h['content'] != user_message:
+                        last_topic = h['content']
 
-        # Keep prompt tight - only include what's needed
+        search_results = web_search.search_and_format(user_message, conversation_context=last_topic)
+        if search_results:
+            search_text = f"\nYou just searched the web. Here's what you found (use naturally, don't cite sources):\n{search_results}\n"
+
         return f"""Time: {tc['current_time']}
+{thoughts_text}
+{memory_text}
 {history_text}
 {search_text}
-User: {user_message}
-
-Gary:"""
+User: {user_message}"""
 
     async def handle_message(self, user_message: str) -> str:
         if not self.current_thread:
@@ -222,7 +219,7 @@ Gary:"""
 
         prompt = self._build_prompt(user_message)
         response = await brain.respond(prompt=prompt, system=SYSTEM_PROMPT,
-                                       temperature=0.7, max_tokens=400)
+                                       temperature=0.7, max_tokens=2048)
 
         # Execute any tool commands
         response, tool_results = execute_tools(response)
@@ -260,7 +257,7 @@ Gary:"""
 
         async for token in brain.respond_stream(
             prompt=prompt, system=SYSTEM_PROMPT,
-            temperature=0.7, max_tokens=400
+            temperature=0.7, max_tokens=2048
         ):
             full_response += token
             yield token

@@ -18,7 +18,8 @@ SEARCH_TRIGGERS = [
     r'\b(weather|forecast)\b',
     r'\b(released|launched|announced|died|elected)\b',
     r'\b(do you know about|have you heard|did you see|did you hear)\b',
-    r'\b(search|look up|google|find out)\b',
+    r'\b(search|look up|look it up|google|find out)\b',
+    r'\b(president|prime minister|ceo|governor|mayor)\b',
 ]
 
 
@@ -42,9 +43,13 @@ def extract_query(message: str) -> str:
     q = q.strip('?!. ')
     # Add current date context for time-sensitive queries
     today = datetime.now().strftime("%B %Y")
+    year = datetime.now().strftime("%Y")
     time_words = ['today', 'tonight', 'current', 'latest', 'now', 'this week', 'score']
+    leadership_words = ['president', 'prime minister', 'ceo', 'governor', 'mayor', 'who is']
     if any(w in q.lower() for w in time_words):
         q = f"{q} {today}"
+    elif any(w in q.lower() for w in leadership_words):
+        q = f"{q} {year}"
     return q
 
 
@@ -91,8 +96,22 @@ def format_results(results: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def search_and_format(message: str) -> str:
+def search_and_format(message: str, conversation_context: str = "") -> str:
     """Full pipeline: detect, search, format."""
+    msg_lower = message.lower().strip()
+
+    # Handle "look it up" style commands - use conversation context
+    look_phrases = ['look it up', 'look it up!', 'look it up...', 'search it',
+                    'google it', 'look it up bro', 'just look it up']
+    if msg_lower.rstrip('!. ') in look_phrases or msg_lower in look_phrases:
+        if conversation_context:
+            query = extract_query(conversation_context)
+            if len(query) >= 3:
+                print(f"[web_search] Context search: '{query}'")
+                results = search(query)
+                return format_results(results)
+        return ""
+
     if not should_search(message):
         print(f"[web_search] No trigger for: '{message[:50]}'")
         return ""
