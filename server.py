@@ -194,9 +194,12 @@ async def websocket_endpoint(ws: WebSocket):
         "viewers": len(connected_clients),
     })
 
-    # Send recent thoughts for context
-    recent = memory.get_recent_thoughts(limit=10)
+    # Send only last 3 thoughts (skip old long garbage)
+    recent = memory.get_recent_thoughts(limit=3)
     for t in reversed(recent):
+        # Skip old essay-style thoughts
+        if len(t['content']) > 200:
+            continue
         await ws.send_text(json.dumps({
             "type": "thought",
             "content": t['content'],
@@ -246,6 +249,24 @@ async def websocket_endpoint(ws: WebSocket):
                 await broadcast({
                     "type": "chat_done",
                     "emotions": emotion_engine.state.to_dict(),
+                })
+
+                # Also show conversation in thought stream
+                await broadcast({
+                    "type": "thought",
+                    "content": f"💬 {sender}: \"{msg['content'][:80]}\"",
+                    "thought_number": "💬",
+                    "emotion": emotion_engine.state.to_dict(),
+                    "timestamp": memory.now_iso(),
+                })
+                # Show a snippet of our response too
+                response_preview = full_response[:120].split('\n')[0]
+                await broadcast({
+                    "type": "thought",
+                    "content": f"↪ {response_preview}",
+                    "thought_number": "↪",
+                    "emotion": emotion_engine.state.to_dict(),
+                    "timestamp": memory.now_iso(),
                 })
 
     except WebSocketDisconnect:
