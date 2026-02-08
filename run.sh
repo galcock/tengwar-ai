@@ -30,7 +30,7 @@ if ! curl -s http://localhost:11434/api/tags > /dev/null 2>&1; then
 fi
 
 # Install deps if needed
-pip3 install -q fastapi uvicorn httpx websockets 2>/dev/null || true
+pip3 install -q fastapi uvicorn httpx websockets tengwar 2>/dev/null || true
 
 # Create data dir
 mkdir -p data
